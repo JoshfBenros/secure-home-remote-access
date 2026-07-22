@@ -4,7 +4,12 @@ A documented home-lab project for securely administering a development workstati
 
 ## Project Status
 
-Home Lab 2.0 is currently being implemented.
+Home Lab 2.0 is being developed in documented phases.
+
+- [Phase 1 — Management Server Foundation](docs/phases/phase-1-management-server-foundation.md) ✅ Complete
+- [Phase 2 — Secure Remote Administration](docs/phases/phase-2-secure-remote-administration.md) 🚧 In Progress
+
+See the [Project Roadmap](docs/roadmap.md) for planned phases and future improvements.
 
 ### Completed
 
