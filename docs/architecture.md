@@ -2,47 +2,43 @@
 
 This document explains the design and evolution of the secure home remote-access environment.
 
-The current design uses a dedicated Windows 11 Pro management server to provide a controlled administrative path between a MacBook Pro and a development workstation.
+The current architecture uses a dedicated Windows 11 Pro management server to provide a controlled administrative path between a MacBook Pro and a development workstation.
 
-## Revision History
+## Current Architecture
 
-### 2026-07-22
+```text
+MacBook Pro
+    |
+    | Tailscale / SSH / RustDesk
+    v
+LAB-GATEWAY
+    |
+    | Wake-on-LAN
+    v
+DEV-PC
+```
 
-- Reorganized the repository into a structured Markdown documentation layout
-- Replaced the shared home-theater gateway with a dedicated management server
-- Added Tailscale unattended connectivity to the management server
-- Added RustDesk unattended remote access
-- Documented the NordVPN and Tailscale conflict
-- Began migration planning for SSH key authentication and Wake-on-LAN
+## Device Roles
 
-### 2026-03-11
-
-- Implemented SSH key authentication
-- Disabled password authentication
-- Added SSH configuration automation
-- Implemented Wake-on-LAN automation
-- Added macOS SSH keychain integration
-
-### 2026-03-10
-
-- Created the initial architecture
-- Used password-based SSH access
-- Connected manually to the development workstation
+| Device | Role |
+|---|---|
+| MacBook Pro | Remote administration, documentation, and mobile development workstation |
+| `LAB-GATEWAY` | Dedicated Windows management server and SSH jump host |
+| `DEV-PC` | Main development workstation and security-lab host |
+| Home-theater laptop | Shared media and Plex system; no longer used for management |
 
 ## Why This Exists
 
-This project began as an effort to organize a personal development environment across multiple systems.
-
-The MacBook Pro is convenient for mobile administration, documentation, and development. The desktop PC provides more resources for virtual machines, security labs, and heavier workloads.
+The MacBook Pro is convenient for mobile administration, documentation, and development. The desktop workstation provides more resources for virtual machines, security labs, and heavier workloads.
 
 The environment was designed to support the following goals:
 
 - Access the development workstation remotely
-- Avoid exposing administrative ports to the public internet
+- Avoid exposing administrative services directly to the public internet
 - Keep the development workstation powered off when it is not needed
 - Use key-based authentication instead of passwords
-- Separate management services from other household systems
-- Build a platform that can later support automation, monitoring, and security tooling
+- Separate management services from shared household systems
+- Create a platform that can support future automation, monitoring, and security tooling
 
 ## Original Architecture
 
@@ -67,8 +63,8 @@ The original workflow was:
 1. Connect from the MacBook Pro to the shared gateway through Tailscale
 2. Authenticate with an SSH key
 3. Send a Wake-on-LAN packet to the development workstation
-4. Wait for the development workstation to reconnect
-5. Connect to the development workstation through SSH or remote desktop
+4. Wait for the development workstation to become reachable
+5. Connect to the development workstation
 
 ## Problem Identified
 
@@ -78,9 +74,9 @@ The resulting symptoms were:
 
 - Tailscale ping succeeded
 - SSH connections failed
-- The SSH service appeared to be running normally
+- The OpenSSH service appeared to be running normally
 - Windows Firewall allowed inbound SSH
-- The Tailscale network profile was set correctly
+- The Tailscale network profile was configured correctly
 - Restarting the system did not resolve the issue
 
 Pausing NordVPN restored SSH connectivity.
@@ -89,99 +85,124 @@ This indicated that the VPN clients or their routing behavior were interfering w
 
 ## Architectural Decision
 
-Rather than changing the networking configuration of a shared production device, the management role was moved to a dedicated Windows 11 Pro management server that is fully controlled by the me.
+Rather than modifying the networking configuration of a shared production device, the management role was moved to a dedicated Windows 11 Pro system that is fully controlled by the project owner.
 
 This decision prevents unrelated software or configuration changes on the home-theater system from affecting remote administration.
 
 It also reduces the risk of management changes disrupting Plex or other shared media functions.
 
-## Current Architecture
+## Naming Standardization
+
+The environment now uses role-based names rather than personal or automatically generated device names.
+
+| Component | Previous Name | Current Name |
+|---|---|---|
+| Management server | `DESKTOP-S1TUKS9` | `LAB-GATEWAY` |
+| Development workstation | `joshua-main` | `DEV-PC` |
+| Management SSH alias | `homeGateway` | `labGateway` |
+| Development SSH alias | `devPC` | `devPC` |
+
+Role-based naming makes the infrastructure easier to understand and allows the environment to scale more cleanly.
+
+## Remote-Access Layers
+
+The workflow is divided into independent layers.
 
 ```text
-MacBook Pro
-    |
-    | Tailscale / RustDesk
-    v
-Dedicated Windows Management Server
-    |
-    | Wake-on-LAN
-    | Migration pending
-    v
-Development Workstation
+Automation
+    lab()
+
+Configuration
+    ~/.ssh/config
+
+Authentication
+    SSH keys
+
+Management
+    LAB-GATEWAY
+
+Service
+    wakeonlan.ps1
+
+Target
+    DEV-PC
 ```
 
-The management server currently provides:
+Each layer has a single responsibility, which improves maintainability and troubleshooting.
+
+## Tailscale Layer
+
+Tailscale provides the private network path between the MacBook Pro, `LAB-GATEWAY`, and `DEV-PC`.
+
+The design does not require public port forwarding.
+
+MagicDNS allows the MacBook Pro to resolve the management server by hostname.
+
+## RustDesk Layer
+
+RustDesk provides graphical remote administration of `LAB-GATEWAY`.
+
+It runs as a Windows service under `LocalSystem`, starts automatically, and reconnects after reboot without requiring an interactive Windows login.
+
+## SSH Layer
+
+OpenSSH Server runs on `LAB-GATEWAY` as the `sshd` Windows service.
+
+The SSH implementation uses:
+
+- ED25519 key authentication
+- The existing MacBook Pro key pair
+- The Windows `administrators_authorized_keys` file
+- Restricted file permissions
+- Password authentication disabled
+- PowerShell as the default SSH shell
+
+The private SSH key remains on the MacBook Pro.
+
+## Wake-on-LAN Layer
+
+`LAB-GATEWAY` runs a PowerShell script that constructs and sends a Wake-on-LAN magic packet to `DEV-PC`.
+
+The MacBook Pro initiates the workflow by connecting to the `labGateway` SSH alias.
+
+## Final Automation Flow
+
+```text
+lab()
+    |
+    v
+SSH to labGateway
+    |
+    v
+LAB-GATEWAY
+    |
+    v
+wakeonlan.ps1
+    |
+    v
+DEV-PC powers on
+    |
+    v
+SSH to devPC
+```
+
+## Validation
+
+The following behaviors were tested successfully:
 
 - Tailscale connectivity
-- Unattended Tailscale operation
-- RustDesk unattended remote access
-- Continuous availability while connected to power
-
-SSH key authentication and Wake-on-LAN have not yet been migrated to the new management server.
-
-## Device Roles
-
-| Device | Role |
-|---|---|
-| MacBook Pro | Remote administration, documentation, and development workstation |
-| Dedicated Windows management server | Management plane and future SSH jump host |
-| Development workstation | Main development system and security-lab host |
-| Shared home-theater laptop | Plex and media system; no longer used for management |
-
-## Current Remote-Access Flow
-
-### Graphical Administration
-
-```text
-MacBook Pro
-    |
-    | Tailscale
-    v
-Management Server
-    |
-    | RustDesk
-    v
-Windows Desktop Session
-```
-
-### Planned SSH and Wake-on-LAN Flow
-
-```text
-MacBook Pro
-    |
-    | Tailscale / SSH key authentication
-    v
-Management Server
-    |
-    | Wake-on-LAN
-    v
-Development Workstation
-```
-
-The planned automation process is:
-
-1. Connect to the management server through Tailscale
-2. Authenticate with an SSH key
-3. Send a Wake-on-LAN packet to the development workstation
-4. Wait for the development workstation to become reachable
-5. Connect to the development workstation
-
-## Authentication Design
-
-The original design used SSH key authentication from the MacBook Pro to the gateway and development workstation.
-
-The private SSH key remained on the MacBook Pro. Authorized public keys were stored on the remote systems.
-
-The Home Lab 2.0 migration will preserve this model:
-
-- Private keys remain on the administrative client
-- Public keys are installed only on authorized systems
-- Password authentication will be disabled after key authentication is verified
-- SSH access will be limited to trusted Tailscale paths
-
-RustDesk uses a permanent password for unattended access. One-time-password access is disabled.
-
-Credentials and remote-access identifiers are not stored in this repository.
+- MagicDNS hostname resolution
+- RustDesk unattended access
+- SSH key authentication
+- Password authentication rejection
+- Wake-on-LAN packet delivery
+- Development workstation wake-up
+- End-to-end automation
+- Management-server reboot recovery
+- Automatic startup of Tailscale
+- Automatic startup of OpenSSH
+- Automatic startup of RustDesk
+- Remote administration after reboot
 
 ## Design Benefits
 
@@ -201,31 +222,26 @@ The dedicated management-server architecture provides:
 
 - No administrative ports are intentionally exposed to the public internet
 - Tailscale provides an encrypted private network path
-- RustDesk runs as a Windows service for unattended access
-- SSH key authentication is planned for the new management server
+- SSH uses key-only authentication
+- Password authentication is disabled
 - Private SSH keys remain on the MacBook Pro
 - The built-in Administrator and Guest accounts remain disabled
+- RustDesk one-time-password access is disabled
 - Sensitive addresses, credentials, and identifiers are excluded from public documentation
 - Wake-on-LAN traffic remains limited to the local network
 
-## Current Limitations
+## Current State
 
-- SSH key authentication has not yet been migrated
-- Wake-on-LAN automation has not yet been migrated
-- RustDesk does not render correctly when the management-server lid is closed
-- The lid currently remains open while the display turns off
-- Battery charge-limit configuration still needs to be verified
-- The management-server hostname still needs to be changed to a role-based name
+Phase 1 and Phase 2 are complete.
 
-## Future Improvements
+The environment now provides:
 
-- Complete SSH key-authentication migration
-- Complete Wake-on-LAN migration
-- Add a reusable wake script
-- Add a visual architecture diagram
-- Add sanitized screenshots
-- Review Tailscale access-control policies
-- Evaluate device segmentation
-- Implement centralized logging
-- Add monitoring and health checks
-- Expand the environment with additional lab systems
+- A dedicated management server
+- Secure key-only SSH access
+- Graphical remote administration
+- Wake-on-LAN automation
+- Automatic service recovery after reboot
+- A complete unattended remote-access workflow
+- Version-controlled documentation
+
+Future phases will focus on monitoring, logging, access control, segmentation, hardening, and additional automation.

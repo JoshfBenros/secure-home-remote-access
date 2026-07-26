@@ -4,15 +4,15 @@
 
 **Status:** Complete
 
-Established the dedicated Windows management server, Tailscale connectivity, RustDesk unattended access, power configuration, and battery-health management.
+Established the dedicated Windows management server, Tailscale connectivity, RustDesk unattended access, power configuration, role-based hostname, and battery-health management.
 
 [View Phase 1 documentation](phases/phase-1-management-server-foundation.md)
 
 ## Phase 2 — Secure Remote Administration
 
-**Status:** In Progress
+**Status:** Complete
 
-Migrate OpenSSH, SSH key authentication, Wake-on-LAN, and the full remote-administration workflow to `LAB-GATEWAY`.
+Migrated OpenSSH, SSH key authentication, Wake-on-LAN, and the complete remote-administration workflow to `LAB-GATEWAY`.
 
 [View Phase 2 documentation](phases/phase-2-secure-remote-administration.md)
 
@@ -24,8 +24,13 @@ Potential work:
 
 - Centralized Windows event collection
 - Service health monitoring
-- Connection and availability checks
-- Alerting for failed services or unreachable systems
+- Tailscale availability checks
+- SSH service monitoring
+- RustDesk service monitoring
+- Development-workstation reachability checks
+- Alerting for failed services
+- Logging of automated workflows
+- Basic operational dashboard
 
 ## Phase 4 — Security Hardening
 
@@ -34,10 +39,15 @@ Potential work:
 Potential work:
 
 - Tailscale access-control policies
-- Device tagging and segmentation
-- SSH restrictions
-- Least-privilege service accounts
-- Configuration review and audit documentation
+- Device tagging
+- Network segmentation
+- SSH source restrictions
+- SSH user restrictions
+- Least-privilege administrative model
+- Windows Firewall review
+- Service-account review
+- Configuration audit documentation
+- Recovery and break-glass procedures
 
 ## Phase 5 — Automation and Expansion
 
@@ -45,8 +55,26 @@ Potential work:
 
 Potential work:
 
-- Reusable PowerShell and shell scripts
+- Version-controlled Wake-on-LAN script
+- Version-controlled Mac automation workflow
 - Automated health checks
+- Automated service recovery checks
 - Additional lab systems
+- Additional virtual machines
 - Improved architecture diagrams
+- Sanitized configuration screenshots
+- Deployment procedures
 - Recovery procedures
+
+## Long-Term Direction
+
+The environment is intended to grow into a broader infrastructure and security lab that supports:
+
+- Windows administration
+- Linux administration
+- Networking
+- Identity and access management
+- Security monitoring
+- Automation
+- Cloud integration
+- Infrastructure hardening

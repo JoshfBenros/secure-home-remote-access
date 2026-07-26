@@ -1,57 +1,94 @@
-# Wake-on-LAN System
+# Wake-on-LAN
 
 ## Purpose
 
-Wake-on-LAN allows a computer to be powered on remotely
-by sending a special network packet called a **magic packet**.
+Wake-on-LAN allows `DEV-PC` to remain powered off until it is needed.
 
-This allows the workstation to remain powered off until
-remote access is required.
+A management system on the local network sends a specially constructed network packet called a magic packet.
 
----
+## Architecture
 
-## Architecture Role
+```text
+MacBook Pro
+    |
+    | SSH
+    v
+LAB-GATEWAY
+    |
+    | Wake-on-LAN magic packet
+    v
+DEV-PC
+```
 
-Mac
-↓
-SSH
-↓
-homeGateway
-↓
-Wake-on-LAN packet
-↓
-devPC
+## Why a Management Server Is Used
 
----
+Wake-on-LAN packets normally need to originate from the local network where the target system is connected.
 
-## Why Use Gateway
+`LAB-GATEWAY` remains continuously available and acts as the internal Wake-on-LAN sender.
 
-The Wake-on-LAN packet must be sent from inside the
-local network.
+## PowerShell Implementation
 
-The homeGateway acts as the internal trigger point.
+The Wake-on-LAN workflow uses:
 
----
+```text
+wakeonlan.ps1
+```
 
-## Automation Script
+The script:
 
-The Mac sends the packet through SSH.
+1. Normalizes the target MAC address
+2. Builds a magic packet
+3. Sends the packet through UDP
+4. Uses the local network broadcast path
+5. Triggers the development workstation to power on
 
-Example:
+Sensitive values such as the real MAC address and internal network details are excluded from this repository.
 
-ssh homeGateway "wakeonlan <MAC_ADDRESS>"
+## Automation Flow
 
----
+```text
+lab()
+    |
+    v
+SSH to labGateway
+    |
+    v
+Run wakeonlan.ps1
+    |
+    v
+Send magic packet
+    |
+    v
+DEV-PC powers on
+```
 
-## Benefits
+After sending the packet, the automation waits for `DEV-PC` to become available and then starts the SSH connection.
 
-- Saves power when workstation is idle
-- Allows remote startup
-- Integrates with SSH automation
+## Migration
 
----
+The original Wake-on-LAN implementation ran on the shared home-theater gateway.
 
-## Future Improvements
+During Home Lab 2.0 Phase 2, the script was migrated to `LAB-GATEWAY`.
 
-- Health checks before connection
-- Wake multiple lab machines
+The migration included:
+
+- Moving the PowerShell script
+- Updating the SSH alias
+- Confirming the script path
+- Verifying network broadcast behavior
+- Successfully waking `DEV-PC`
+- Restoring the complete automated workflow
+
+## Validation
+
+The following tests completed successfully:
+
+- Magic-packet generation
+- UDP broadcast transmission
+- Development workstation wake-up
+- Wake-on-LAN after management-server reboot
+- End-to-end automation from the MacBook Pro
+
+## Future Improvement
+
+A sanitized and reusable version of the Wake-on-LAN script will be added to the `scripts/` directory.

@@ -1,59 +1,82 @@
-# Tailscale Setup
+# Tailscale
 
 ## Purpose
 
-Tailscale provides secure connectivity between devices
-using a private encrypted network without exposing
-services to the public internet.
+Tailscale provides a private encrypted network path between the systems in the remote-access environment.
 
----
+It allows remote administration without requiring public port forwarding.
 
-## Devices in Network
+## Devices
 
-MacBook Pro (client)
+The current tailnet includes:
 
-homeGateway
+- MacBook Pro
+- `LAB-GATEWAY`
+- `DEV-PC`
 
-devPC (main workstation)
+Sensitive Tailscale addresses are excluded from this repository.
 
----
+## Management Server Configuration
 
-## Why Tailscale
+On `LAB-GATEWAY`:
 
-Benefits:
+- Tailscale is installed as a Windows service
+- The service starts automatically
+- Unattended mode is enabled
+- The system reconnects before user login
+- Connectivity survives reboot
 
-- No port forwarding required
-- Encrypted WireGuard connections
-- Simple device management
-- Works across networks
+## MagicDNS
 
----
+MagicDNS allows systems to be reached through hostnames rather than hardcoded Tailscale IP addresses.
 
-## Architecture Role
+The MacBook Pro successfully resolves:
 
-Tailscale acts as the **private backbone network**
-that connects all machines.
+```text
+lab-gateway
+```
 
-Mac
-↓
-Tailscale network
-↓
-homeGateway
-↓
-internal machines
+This supports cleaner SSH configuration and reduces dependence on numeric addresses.
 
----
+## Role in the Architecture
+
+```text
+MacBook Pro
+    |
+    | Tailscale
+    v
+LAB-GATEWAY
+    |
+    | Local network
+    v
+DEV-PC
+```
+
+Tailscale acts as the private management network connecting the remote administration client to the management server.
 
 ## Security Benefits
 
-- Devices only reachable by authorized nodes
-- Traffic encrypted end-to-end
-- No public IP exposure
+- No public port forwarding required
+- Encrypted network path
+- Device-based access
+- Simplified remote connectivity
+- Reduced public attack surface
+- Stable hostnames through MagicDNS
 
----
+## Validation
+
+The following tests completed successfully:
+
+- Management server visible on the tailnet
+- MagicDNS hostname resolution
+- Automatic reconnection after reboot
+- SSH through Tailscale
+- RustDesk access through the remote environment
 
 ## Future Improvements
 
-- Tag-based device access policies
-- Network segmentation
-- Access control rules
+- Review Tailscale access-control policies
+- Introduce device tags
+- Evaluate segmentation
+- Restrict management access to approved devices
+- Document recovery procedures
