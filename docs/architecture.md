@@ -1,8 +1,8 @@
 # Remote Access Architecture
 
-This document explains the design and evolution of the secure home remote-access environment.
+This document describes the structure and evolution of the secure home-lab environment.
 
-The current architecture uses a dedicated Windows 11 Pro management server to provide a controlled administrative path between a MacBook Pro and a development workstation.
+The architecture combines a dedicated Windows management server, secure remote administration, and a VMware-based cybersecurity lab hosted on `DEV-PC`.
 
 ## Current Architecture
 
@@ -16,6 +16,14 @@ LAB-GATEWAY
     | Wake-on-LAN
     v
 DEV-PC
+    |
+    | VMware Workstation
+    |
+    ├── KALI-01
+    |   Offensive security workstation
+    |
+    └── NIDS-01
+        Network intrusion-detection workstation
 ```
 
 ## Device Roles
@@ -24,25 +32,27 @@ DEV-PC
 |---|---|
 | MacBook Pro | Remote administration, documentation, and mobile development workstation |
 | `LAB-GATEWAY` | Dedicated Windows management server and SSH jump host |
-| `DEV-PC` | Main development workstation and security-lab host |
+| `DEV-PC` | Main development workstation and VMware lab host |
+| `KALI-01` | Offensive security and packet-analysis workstation |
+| `NIDS-01` | Snort-based network intrusion-detection workstation |
 | Home-theater laptop | Shared media and Plex system; no longer used for management |
 
-## Why This Exists
+## Project Goals
 
-The MacBook Pro is convenient for mobile administration, documentation, and development. The desktop workstation provides more resources for virtual machines, security labs, and heavier workloads.
+The environment was designed to:
 
-The environment was designed to support the following goals:
-
-- Access the development workstation remotely
+- Securely access `DEV-PC` remotely
 - Avoid exposing administrative services directly to the public internet
-- Keep the development workstation powered off when it is not needed
-- Use key-based authentication instead of passwords
+- Keep `DEV-PC` powered off when it is not needed
 - Separate management services from shared household systems
-- Create a platform that can support future automation, monitoring, and security tooling
+- Support offensive and defensive cybersecurity labs
+- Provide a foundation for monitoring, automation, and future expansion
 
-## Original Architecture
+## Architecture Evolution
 
-The original design used a shared home-theater laptop as the remote-access gateway.
+### Original Design
+
+The original architecture used a shared home-theater laptop as the remote-access gateway.
 
 ```text
 MacBook Pro
@@ -56,192 +66,171 @@ Shared Home-Theater Laptop
 Development Workstation
 ```
 
-The shared gateway also hosted Plex and was managed by more than one person.
+The shared system also hosted Plex and was managed by more than one person.
 
-The original workflow was:
+NordVPN was later enabled on the device. Tailscale connectivity remained available, but SSH connections failed. Pausing NordVPN restored access, indicating that the VPN configuration was interfering with the management path.
 
-1. Connect from the MacBook Pro to the shared gateway through Tailscale
-2. Authenticate with an SSH key
-3. Send a Wake-on-LAN packet to the development workstation
-4. Wait for the development workstation to become reachable
-5. Connect to the development workstation
+### Dedicated Management Server
 
-## Problem Identified
+Rather than modifying a shared production system, the management role was moved to a dedicated Windows 11 Pro server.
 
-NordVPN was later enabled on the shared home-theater laptop.
+This created:
 
-The resulting symptoms were:
-
-- Tailscale ping succeeded
-- SSH connections failed
-- The OpenSSH service appeared to be running normally
-- Windows Firewall allowed inbound SSH
-- The Tailscale network profile was configured correctly
-- Restarting the system did not resolve the issue
-
-Pausing NordVPN restored SSH connectivity.
-
-This indicated that the VPN clients or their routing behavior were interfering with the Tailscale and SSH connection path.
-
-## Architectural Decision
-
-Rather than modifying the networking configuration of a shared production device, the management role was moved to a dedicated Windows 11 Pro system that is fully controlled by the project owner.
-
-This decision prevents unrelated software or configuration changes on the home-theater system from affecting remote administration.
-
-It also reduces the risk of management changes disrupting Plex or other shared media functions.
+- Separation of concerns
+- Full administrative control
+- More predictable networking
+- Reduced risk to the Plex environment
+- A cleaner management plane
+- A stronger foundation for future security tooling
 
 ## Naming Standardization
 
-The environment now uses role-based names rather than personal or automatically generated device names.
+The environment uses role-based names rather than personal or automatically generated names.
 
 | Component | Previous Name | Current Name |
 |---|---|---|
 | Management server | `DESKTOP-S1TUKS9` | `LAB-GATEWAY` |
 | Development workstation | `joshua-main` | `DEV-PC` |
+| Kali VM | `kali-vm` | `KALI-01` |
+| Ubuntu Snort VM | `ubuntu-snort` | `NIDS-01` |
 | Management SSH alias | `homeGateway` | `labGateway` |
 | Development SSH alias | `devPC` | `devPC` |
 
-Role-based naming makes the infrastructure easier to understand and allows the environment to scale more cleanly.
+Role-based naming makes the infrastructure easier to understand and scale.
 
-## Remote-Access Layers
+## Management Architecture
 
-The workflow is divided into independent layers.
+Remote administration uses several complementary access methods.
 
-```text
-Automation
-    lab()
+| Technology | Architectural Purpose |
+|---|---|
+| Tailscale | Private management network between approved devices |
+| SSH | Command-line administration and automation |
+| RustDesk | Graphical administration |
+| Wake-on-LAN | Allows `DEV-PC` to remain powered off until needed |
 
-Configuration
-    ~/.ssh/config
+These services provide remote management without intentionally exposing administrative ports to the public internet.
 
-Authentication
-    SSH keys
-
-Management
-    LAB-GATEWAY
-
-Service
-    wakeonlan.ps1
-
-Target
-    DEV-PC
-```
-
-Each layer has a single responsibility, which improves maintainability and troubleshooting.
-
-## Tailscale Layer
-
-Tailscale provides the private network path between the MacBook Pro, `LAB-GATEWAY`, and `DEV-PC`.
-
-The design does not require public port forwarding.
-
-MagicDNS allows the MacBook Pro to resolve the management server by hostname.
-
-## RustDesk Layer
-
-RustDesk provides graphical remote administration of `LAB-GATEWAY`.
-
-It runs as a Windows service under `LocalSystem`, starts automatically, and reconnects after reboot without requiring an interactive Windows login.
-
-## SSH Layer
-
-OpenSSH Server runs on `LAB-GATEWAY` as the `sshd` Windows service.
-
-The SSH implementation uses:
-
-- ED25519 key authentication
-- The existing MacBook Pro key pair
-- The Windows `administrators_authorized_keys` file
-- Restricted file permissions
-- Password authentication disabled
-- PowerShell as the default SSH shell
-
-The private SSH key remains on the MacBook Pro.
-
-## Wake-on-LAN Layer
-
-`LAB-GATEWAY` runs a PowerShell script that constructs and sends a Wake-on-LAN magic packet to `DEV-PC`.
-
-The MacBook Pro initiates the workflow by connecting to the `labGateway` SSH alias.
-
-## Final Automation Flow
+The current management path is:
 
 ```text
-lab()
-    |
-    v
-SSH to labGateway
+MacBook Pro
     |
     v
 LAB-GATEWAY
     |
     v
-wakeonlan.ps1
-    |
-    v
-DEV-PC powers on
-    |
-    v
-SSH to devPC
+DEV-PC
 ```
 
-## Validation
+`LAB-GATEWAY` acts as the controlled entry point for administration and Wake-on-LAN operations.
 
-The following behaviors were tested successfully:
+## Virtual Lab Architecture
 
-- Tailscale connectivity
-- MagicDNS hostname resolution
-- RustDesk unattended access
-- SSH key authentication
-- Password authentication rejection
-- Wake-on-LAN packet delivery
-- Development workstation wake-up
-- End-to-end automation
-- Management-server reboot recovery
-- Automatic startup of Tailscale
-- Automatic startup of OpenSSH
-- Automatic startup of RustDesk
-- Remote administration after reboot
+`DEV-PC` hosts the cybersecurity lab through VMware Workstation.
+
+```text
+DEV-PC
+    |
+    | VMware Workstation
+    |
+    ├── KALI-01
+    |   Offensive security workstation
+    |
+    └── NIDS-01
+        Network intrusion-detection workstation
+```
+
+| System | Role | Purpose |
+|---|---|---|
+| `KALI-01` | Offensive workstation | Reconnaissance, vulnerability assessment, packet capture, and controlled security testing |
+| `NIDS-01` | Defensive monitoring workstation | Snort IDS, traffic monitoring, alerting, and detection analysis |
+
+The two virtual machines provide separate offensive and defensive roles while sharing the same VMware host.
+
+## Security Boundaries
+
+The architecture separates the environment into distinct functional areas.
+
+### Management Plane
+
+Includes:
+
+- MacBook Pro
+- `LAB-GATEWAY`
+- Remote-access services
+- Wake-on-LAN workflow
+
+Purpose:
+
+- Administration
+- Remote access
+- Automation
+- System recovery
+
+### Lab Plane
+
+Includes:
+
+- `DEV-PC`
+- VMware Workstation
+- `KALI-01`
+- `NIDS-01`
+- Future lab systems
+
+Purpose:
+
+- Security testing
+- Packet analysis
+- Detection development
+- Monitoring
+- Controlled attack simulations
+
+### Shared Production Systems
+
+The home-theater laptop remains outside the management plane.
+
+Its purpose is limited to shared media and Plex services, reducing the chance that unrelated software or household changes affect the lab environment.
 
 ## Design Benefits
 
-The dedicated management-server architecture provides:
+The current design provides:
 
-- Separation of concerns
-- Full administrative control over the management environment
-- Reduced risk to the shared Plex environment
-- More predictable networking behavior
-- A cleaner management plane
+- Clear separation between management and lab workloads
+- Reduced dependence on shared household systems
+- Role-based naming
+- Centralized remote administration
+- Dedicated offensive and defensive lab systems
 - Easier troubleshooting
-- A stronger foundation for automation
-- Space for monitoring and security tooling
-- Reduced dependence on a shared household device
+- Support for future network segmentation
+- Space for additional monitoring and automation
+- A scalable foundation for future virtual machines
 
-## Security Properties
+## Planned Expansion
 
-- No administrative ports are intentionally exposed to the public internet
-- Tailscale provides an encrypted private network path
-- SSH uses key-only authentication
-- Password authentication is disabled
-- Private SSH keys remain on the MacBook Pro
-- The built-in Administrator and Guest accounts remain disabled
-- RustDesk one-time-password access is disabled
-- Sensitive addresses, credentials, and identifiers are excluded from public documentation
-- Wake-on-LAN traffic remains limited to the local network
+Future architecture may include:
 
-## Current State
+```text
+DEV-PC
+    |
+    | VMware Workstation
+    |
+    ├── KALI-01
+    ├── NIDS-01
+    ├── Vulnerable Target
+    ├── Windows Domain Controller
+    ├── Windows Client
+    └── Future SIEM Platform
+```
 
-Phase 1 and Phase 2 are complete.
+Planned areas of expansion include:
 
-The environment now provides:
-
-- A dedicated management server
-- Secure key-only SSH access
-- Graphical remote administration
-- Wake-on-LAN automation
-- Automatic service recovery after reboot
-- A complete unattended remote-access workflow
-- Version-controlled documentation
-
-Future phases will focus on monitoring, logging, access control, segmentation, hardening, and additional automation.
+- Isolated VMware networks
+- Vulnerable target deployment
+- Active Directory
+- Windows endpoint logging
+- Centralized event collection
+- Wazuh or another SIEM platform
+- Detection engineering
+- Incident-response exercises
+- Additional automation

@@ -1,6 +1,12 @@
 # Project Roadmap
 
-## Phase 1 — Management Server Foundation
+This roadmap tracks completed milestones and the next likely direction of the project.
+
+Future phases will be defined as the environment develops rather than being locked in too far ahead of time.
+
+## Completed Phases
+
+### Phase 1 — Management Server Foundation
 
 **Status:** Complete
 
@@ -8,7 +14,7 @@ Established the dedicated Windows management server, Tailscale connectivity, Rus
 
 [View Phase 1 documentation](phases/phase-1-management-server-foundation.md)
 
-## Phase 2 — Secure Remote Administration
+### Phase 2 — Secure Remote Administration
 
 **Status:** Complete
 
@@ -16,65 +22,49 @@ Migrated OpenSSH, SSH key authentication, Wake-on-LAN, and the complete remote-a
 
 [View Phase 2 documentation](phases/phase-2-secure-remote-administration.md)
 
-## Phase 3 — Monitoring and Logging
+### Phase 3 — Virtual Lab Foundation
 
-**Status:** Planned
+**Status:** Complete
 
-Potential work:
+Standardized the existing Linux virtual machines, expanded storage, verified system health, centralized reusable maintenance scripts, and created clean VMware rollback points.
 
-- Centralized Windows event collection
-- Service health monitoring
-- Tailscale availability checks
-- SSH service monitoring
-- RustDesk service monitoring
-- Development-workstation reachability checks
-- Alerting for failed services
-- Logging of automated workflows
-- Basic operational dashboard
+Current lab systems:
 
-## Phase 4 — Security Hardening
+- `KALI-01` — offensive security workstation
+- `NIDS-01` — Snort-based network intrusion-detection workstation
 
-**Status:** Planned
+[View Phase 3 documentation](phases/phase-3-virtual-lab-foundation.md)
 
-Potential work:
+## Current Direction
 
-- Tailscale access-control policies
-- Device tagging
-- Network segmentation
-- SSH source restrictions
-- SSH user restrictions
-- Least-privilege administrative model
-- Windows Firewall review
-- Service-account review
-- Configuration audit documentation
-- Recovery and break-glass procedures
+With the virtual machines now stable and organized, the next step is to begin using them as a connected cybersecurity lab.
 
-## Phase 5 — Automation and Expansion
+The next phase will likely focus on:
 
-**Status:** Planned
+- Reviewing and organizing the VMware network configuration
+- Safely introducing a vulnerable target
+- Using `KALI-01` to generate controlled test traffic
+- Tuning Snort on `NIDS-01`
+- Capturing and analyzing packets with Wireshark
+- Confirming that defensive alerts match the activity being generated
+- Documenting basic attack-and-detection exercises
 
-Potential work:
+The final scope will be decided after the current VMware networking and available target systems are reviewed.
 
-- Version-controlled Wake-on-LAN script
-- Version-controlled Mac automation workflow
-- Automated health checks
-- Automated service recovery checks
-- Additional lab systems
-- Additional virtual machines
-- Improved architecture diagrams
-- Sanitized configuration screenshots
-- Deployment procedures
-- Recovery procedures
+## Future Direction
 
-## Long-Term Direction
+As the lab grows, possible areas of expansion include:
 
-The environment is intended to grow into a broader infrastructure and security lab that supports:
-
-- Windows administration
-- Linux administration
-- Networking
+- Active Directory and Windows administration
+- Windows server and client virtual machines
+- Centralized Windows and Linux logging
+- Sysmon and endpoint monitoring
+- Wazuh or another SIEM platform
+- Detection engineering
+- Incident-response exercises
+- PowerShell, Bash, and Python automation
 - Identity and access management
-- Security monitoring
-- Automation
+- Security hardening
+- Additional network segmentation
 - Cloud integration
-- Infrastructure hardening
+- Additional offensive and defensive systems

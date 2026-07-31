@@ -20,6 +20,8 @@ DEV-PC
 
 - [Phase 1 — Management Server Foundation](docs/phases/phase-1-management-server-foundation.md) ✅ Complete
 - [Phase 2 — Secure Remote Administration](docs/phases/phase-2-secure-remote-administration.md) ✅ Complete
+- [Phase 3 — Virtual Lab Foundation](docs/phases/phase-3-virtual-lab-foundation.md) ✅ Complete
+
 
 See the [Project Roadmap](docs/roadmap.md) for planned phases and future improvements.
 
